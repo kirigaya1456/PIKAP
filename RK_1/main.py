@@ -1,109 +1,130 @@
-from datetime import date
+# используется для сортировки
+from operator import itemgetter
 
 
-class Database:
-    def __init__(self, database_id, name, engine, size_mb):
-        self.database_id = database_id
+# класс Пользователь
+class User:
+    def __init__(self, id, fio, sal, comp_id):
+        self.id = id
+        self.fio = fio
+        self.sal = sal
+        self.comp_id = comp_id
+
+
+# класс Компьютер
+class Computer:
+    def __init__(self, id, name):
+        self.id = id
         self.name = name
-        self.engine = engine                # Пример: "PostgreSQL"
-        self.size_mb = size_mb              # Размер в МБ
 
 
-class StoredProcedure:
-    def __init__(self, procedure_id, name, language, author, last_modified_date, database_id, execution_count):
-        self.procedure_id = procedure_id
-        self.name = name
-        self.language = language            # Пример: "PL/pgSQL"
-        self.author = author                # Автор процедуры
-        self.last_modified_date = last_modified_date  # Последнее изменение (date)
-        self.database_id = database_id
-        self.execution_count = execution_count  # Количество запусков
+# класс для связи многие ко многим
+class UserComputer:
+    def __init__(self, comp_id, user_id):
+        self.comp_id = comp_id
+        self.user_id = user_id
 
 
-class ProcedureDatabaseLink:
-    def __init__(self, procedure_id, database_id):
-        self.procedure_id = procedure_id
-        self.database_id = database_id
-
-
-# Тестовые данные
-databases = [
-    Database(1, "AlphaDB", "PostgreSQL", 1024),
-    Database(2, "BetaDB", "MySQL", 2048),
-    Database(3, "Artemis", "Oracle", 800),
-    Database(4, "Omega", "SQLite", 350)
+# Компьютеры
+computers = [
+    Computer(1, 'рабочая станция инженера'),
+    Computer(2, 'сервер хранения данных'),
+    Computer(3, 'ноутбук руководителя'),
+    Computer(11, 'графическая станция дизайнера'),
+    Computer(22, 'терминал для тестирования'),
+    Computer(33, 'мобильная рабочая станция'),
 ]
 
-procedures = [
-    StoredProcedure(1, "process_sales", "PL/pgSQL",
-                    "Ivanov", date(2025, 10, 1), 1, 55),
-    StoredProcedure(2, "clean_orders", "PL/pgSQL",
-                    "Sidorov", date(2025, 9, 5), 1, 120),
-    StoredProcedure(3, "archive_data", "T-SQL",
-                    "Petrov", date(2025, 8, 30), 2, 34),
-    StoredProcedure(4, "check_integrity", "PL/SQL",
-                    "Orlova", date(2025, 6, 7), 3, 12),
-    StoredProcedure(5, "send_reports", "Python",
-                    "Kim", date(2025, 10, 25), 3, 66)
+# Пользователи
+users = [
+    User(1, 'Кузнецов', 25000, 1),
+    User(2, 'Смирнов', 35000, 2),
+    User(3, 'Попов', 45000, 3),
+    User(4, 'Васильев', 35000, 3),
+    User(5, 'Павлов', 25000, 3),
 ]
 
-links = [
-    ProcedureDatabaseLink(1, 1),
-    ProcedureDatabaseLink(2, 1),
-    ProcedureDatabaseLink(3, 2),
-    ProcedureDatabaseLink(4, 3),
-    ProcedureDatabaseLink(5, 3),
-    ProcedureDatabaseLink(5, 2)  # Для many-to-many
+users_computers = [
+    UserComputer(1, 1),
+    UserComputer(2, 2),
+    UserComputer(3, 3),
+    UserComputer(3, 4),
+    UserComputer(3, 5),
+    UserComputer(11, 1),
+    UserComputer(22, 2),
+    UserComputer(33, 3),
+    UserComputer(33, 4),
+    UserComputer(33, 5),
 ]
+
+
+# функция для вывода результатов
+def print_table(headers, data):
+    col_widths = []
+    for i in range(len(headers)):
+        col_width = max(len(str(headers[i])),
+                        max(len(str(row[i])) for row in data) if data else 0)
+        col_widths.append(col_width)
+
+    header_row = "  ".join(f"{headers[i]:<{col_widths[i]}}" for i in range(len(headers)))
+    print(header_row)
+
+    separator = "  ".join("-" * col_widths[i] for i in range(len(headers)))
+    print(separator)
+
+    for row in data:
+        data_row = "  ".join(f"{str(row[i]):<{col_widths[i]}}" for i in range(len(row)))
+        print(data_row)
+    print()
 
 
 def main():
-    # Запрос 1: базы данных на "А" и их процедуры
-    print("Request 1:")
-    databases_starting_with_a = [db for db in databases if db.name.startswith('A')]
-    result_1 = [
-        {
-            'database_name': db.name,
-            'procedures': [procedure.name for procedure in procedures
-                          if procedure.database_id == db.database_id]
-        }
-        for db in databases_starting_with_a
-    ]
-    for row in result_1:
-        print(f"Database: {row['database_name']} | Procedures: {', '.join(row['procedures'])}")
-    print()
+    one_to_many = [(u.fio, u.sal, c.name)
+                   for c in computers
+                   for u in users
+                   if u.comp_id == c.id]
 
-    # Запрос 2: максимальное количество запусков процедур по базам, по убыванию
-    print("Request 2:")
-    database_max_executions = []
-    for database in databases:
-        database_procedures = [procedure for procedure in procedures
-                              if procedure.database_id == database.database_id]
-        if database_procedures:
-            max_execution_count = max(procedure.execution_count
-                                     for procedure in database_procedures)
-            database_max_executions.append(
-                {'database_name': database.name, 'max_execution_count': max_execution_count})
+    many_to_many_temp = [(c.name, uc.comp_id, uc.user_id)
+                         for c in computers
+                         for uc in users_computers
+                         if c.id == uc.comp_id]
 
-    database_max_executions.sort(key=lambda x: x['max_execution_count'], reverse=True)
-    for row in database_max_executions:
-        print(f"Database: {row['database_name']} | Max Execution Count: {row['max_execution_count']}")
-    print()
+    many_to_many = [(u.fio, u.sal, comp_name)
+                    for comp_name, comp_id, user_id in many_to_many_temp
+                    for u in users if u.id == user_id]
 
-    # Запрос 3: many-to-many - процедуры и базы, отсортировано по базе
-    print("Request 3:")
-    database_dict = {database.database_id: database.name for database in databases}
-    procedure_dict = {procedure.procedure_id: procedure.name for procedure in procedures}
+    print('Задание 1')
+    print('Список всех связанных пользователей и компьютеров (сортировка по компьютерам)')
+    res_11 = sorted(one_to_many, key=itemgetter(2))
+    headers_A1 = ['Фамилия', 'Зарплата', 'Компьютер']
+    print_table(headers_A1, res_11)
 
-    many_to_many_relations = [
-        (database_dict[link.database_id], procedure_dict[link.procedure_id])
-        for link in links
-    ]
-    many_to_many_relations.sort(key=lambda x: (x[0], x[1]))
+    print('Задание 2')
+    print('Список компьютеров с суммарной зарплатой пользователей')
+    res_12_unsorted = []
+    for c in computers:
+        c_users = list(filter(lambda i: i[2] == c.name, one_to_many))
+        if len(c_users) > 0:
+            c_sals = [sal for _, sal, _ in c_users]
+            c_sals_sum = sum(c_sals)
+            res_12_unsorted.append((c.name, c_sals_sum))
 
-    for database_name, procedure_name in many_to_many_relations:
-        print(f"Database: {database_name} | Procedure: {procedure_name}")
-    print()
+    res_12 = sorted(res_12_unsorted, key=itemgetter(1), reverse=True)
+    headers_A2 = ['Компьютер', 'Суммарная зарплата']
+    print_table(headers_A2, res_12)
+
+    print('Задание 3')
+    print('Компьютеры с названием содержащим "станция" и их пользователи')
+    res_13 = []
+    for c in computers:
+        if 'станция' in c.name:
+            c_users = list(filter(lambda i: i[2] == c.name, many_to_many))
+            c_users_names = [x for x, _, _ in c_users]
+            for user_name in c_users_names:
+                res_13.append((c.name, user_name))
+
+    headers_A3 = ['Компьютер', 'Пользователь']
+    print_table(headers_A3, res_13)
 
 
 if __name__ == '__main__':
