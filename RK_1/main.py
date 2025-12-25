@@ -1,13 +1,12 @@
-# используется для сортировки
 from operator import itemgetter
 
 
-# класс Пользователь
-class User:
-    def __init__(self, id, fio, sal, comp_id):
+# класс Программа
+class Program:
+    def __init__(self, id, name, size, comp_id):
         self.id = id
-        self.fio = fio
-        self.sal = sal
+        self.name = name
+        self.size = size  # размер в МБ
         self.comp_id = comp_id
 
 
@@ -19,47 +18,56 @@ class Computer:
 
 
 # класс для связи многие ко многим
-class UserComputer:
-    def __init__(self, comp_id, user_id):
+class ProgramComputer:
+    def __init__(self, comp_id, program_id):
         self.comp_id = comp_id
-        self.user_id = user_id
+        self.program_id = program_id
 
 
 # Компьютеры
 computers = [
-    Computer(1, 'рабочая станция инженера'),
-    Computer(2, 'сервер хранения данных'),
-    Computer(3, 'ноутбук руководителя'),
-    Computer(11, 'графическая станция дизайнера'),
-    Computer(22, 'терминал для тестирования'),
-    Computer(33, 'мобильная рабочая станция'),
+    Computer(1, 'Рабочая станция инженера'),
+    Computer(2, 'Сервер базы данных'),
+    Computer(3, 'Ноутбук руководителя'),
+    Computer(11, 'АРМ бухгалтера'),
+    Computer(22, 'Аналитическая станция'),
+    Computer(33, 'Антивирусный сервер'),
 ]
 
-# Пользователи
-users = [
-    User(1, 'Кузнецов', 25000, 1),
-    User(2, 'Смирнов', 35000, 2),
-    User(3, 'Попов', 45000, 3),
-    User(4, 'Васильев', 35000, 3),
-    User(5, 'Павлов', 25000, 3),
+# Программы
+programs = [
+    Program(1, 'AutoCAD', 2500, 1),
+    Program(2, '1С:Бухгалтерия', 1500, 2),
+    Program(3, 'Microsoft Office', 3000, 3),
+    Program(4, 'Adobe Photoshop', 5000, 3),
+    Program(5, 'Visual Studio Code', 500, 3),
+    Program(6, 'Антивирус Касперского', 800, 11),
+    Program(7, '7-Zip', 50, 22),
 ]
 
-users_computers = [
-    UserComputer(1, 1),
-    UserComputer(2, 2),
-    UserComputer(3, 3),
-    UserComputer(3, 4),
-    UserComputer(3, 5),
-    UserComputer(11, 1),
-    UserComputer(22, 2),
-    UserComputer(33, 3),
-    UserComputer(33, 4),
-    UserComputer(33, 5),
+programs_computers = [
+    ProgramComputer(1, 1),
+    ProgramComputer(2, 2),
+    ProgramComputer(3, 3),
+    ProgramComputer(3, 4),
+    ProgramComputer(3, 5),
+    ProgramComputer(11, 1),
+    ProgramComputer(11, 6),
+    ProgramComputer(22, 2),
+    ProgramComputer(22, 7),
+    ProgramComputer(33, 3),
+    ProgramComputer(33, 4),
+    ProgramComputer(33, 5),
 ]
 
 
 # функция для вывода результатов
 def print_table(headers, data):
+    if not data:
+        print("Нет данных для отображения")
+        print()
+        return
+
     col_widths = []
     for i in range(len(headers)):
         col_width = max(len(str(headers[i])),
@@ -79,52 +87,69 @@ def print_table(headers, data):
 
 
 def main():
-    one_to_many = [(u.fio, u.sal, c.name)
+    # Связь один-ко-многим
+    one_to_many = [(p.name, p.size, c.name)
                    for c in computers
-                   for u in users
-                   if u.comp_id == c.id]
+                   for p in programs
+                   if p.comp_id == c.id]
 
-    many_to_many_temp = [(c.name, uc.comp_id, uc.user_id)
+    # Временная связь для многие-ко-многим
+    many_to_many_temp = [(c.name, pc.comp_id, pc.program_id)
                          for c in computers
-                         for uc in users_computers
-                         if c.id == uc.comp_id]
+                         for pc in programs_computers
+                         if c.id == pc.comp_id]
 
-    many_to_many = [(u.fio, u.sal, comp_name)
-                    for comp_name, comp_id, user_id in many_to_many_temp
-                    for u in users if u.id == user_id]
+    # Связь многие-ко-многим
+    many_to_many = [(p.name, p.size, comp_name)
+                    for comp_name, comp_id, program_id in many_to_many_temp
+                    for p in programs if p.id == program_id]
 
     print('Задание 1')
-    print('Список всех связанных пользователей и компьютеров (сортировка по компьютерам)')
-    res_11 = sorted(one_to_many, key=itemgetter(2))
-    headers_A1 = ['Фамилия', 'Зарплата', 'Компьютер']
-    print_table(headers_A1, res_11)
+    print('Список всех программ, у которых название заканчивается на "e", и названия компьютеров, на которых они установлены')
+    # Находим программы, названия которых заканчиваются на "ов" (русская "в")
+    res_1 = [(name, comp_name) for name, size, comp_name in one_to_many if name.endswith('e')]
+    headers_1 = ['Программа', 'Компьютер']
+    print_table(headers_1, res_1)
 
     print('Задание 2')
-    print('Список компьютеров с суммарной зарплатой пользователей')
-    res_12_unsorted = []
+    print('Список компьютеров со средним размером программ в каждом компьютере')
+    res_2_unsorted = []
     for c in computers:
-        c_users = list(filter(lambda i: i[2] == c.name, one_to_many))
-        if len(c_users) > 0:
-            c_sals = [sal for _, sal, _ in c_users]
-            c_sals_sum = sum(c_sals)
-            res_12_unsorted.append((c.name, c_sals_sum))
+        # Получаем программы компьютера
+        c_programs = list(filter(lambda i: i[2] == c.name, one_to_many))
+        if len(c_programs) > 0:
+            # Вычисляем средний размер программ без использования mean()
+            total_size = sum(size for _, size, _ in c_programs)
+            count = len(c_programs)
+            avg_size = total_size / count if count > 0 else 0
+            res_2_unsorted.append((c.name, round(avg_size, 2)))
 
-    res_12 = sorted(res_12_unsorted, key=itemgetter(1), reverse=True)
-    headers_A2 = ['Компьютер', 'Суммарная зарплата']
-    print_table(headers_A2, res_12)
+    # Сортировка по среднему размеру
+    res_2 = sorted(res_2_unsorted, key=itemgetter(1))
+    headers_2 = ['Компьютер', 'Средний размер программ (МБ)']
+    print_table(headers_2, res_2)
 
     print('Задание 3')
-    print('Компьютеры с названием содержащим "станция" и их пользователи')
-    res_13 = []
-    for c in computers:
-        if 'станция' in c.name:
-            c_users = list(filter(lambda i: i[2] == c.name, many_to_many))
-            c_users_names = [x for x, _, _ in c_users]
-            for user_name in c_users_names:
-                res_13.append((c.name, user_name))
+    print('Список всех компьютеров, у которых название начинается с буквы "А", и список программ, установленных на них')
+    res_3 = []
+    # Находим компьютеры, начинающиеся на "А"
+    a_computers = [c for c in computers if c.name.startswith('А')]
 
-    headers_A3 = ['Компьютер', 'Пользователь']
-    print_table(headers_A3, res_13)
+    for c in a_computers:
+        # Получаем программы компьютера (связь многие-ко-многим)
+        c_programs = list(filter(lambda i: i[2] == c.name, many_to_many))
+        c_program_names = [name for name, _, _ in c_programs]
+        # Добавляем компьютер даже если нет программ
+        if c_program_names:
+            for prog_name in c_program_names:
+                res_3.append((c.name, prog_name))
+        else:
+            res_3.append((c.name, 'Нет программ'))
+
+    # Сортировка по названию компьютера
+    res_3_sorted = sorted(res_3, key=itemgetter(0))
+    headers_3 = ['Компьютер', 'Программа']
+    print_table(headers_3, res_3_sorted)
 
 
 if __name__ == '__main__':
